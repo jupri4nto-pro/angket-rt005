@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hasil Rekap Angket Ketua RT 005</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f8fafc; color: #334155; padding: 20px 12px; display: flex; justify-content: center; }
+        .container { max-width: 800px; width: 100%; background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        h1 { color: #1e3a8a; font-size: 20px; text-align: center; margin-bottom: 5px; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
+        .stat-card { background: #eff6ff; padding: 15px; border-radius: 8px; text-align: center; }
+        .stat-number { font-size: 24px; font-weight: bold; color: #0284c7; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+        th { background: #1e3a8a; color: white; }
+        .rank { font-weight: bold; color: #0284c7; }
+        .badge { background: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 12px; font-weight: bold; font-size: 12px; }
+        
+        .btn-reset {
+            background-color: #dc2626;
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            margin-top: 25px;
+            width: 100%;
+            transition: background 0.2s;
+        }
+        .btn-reset:hover {
+            background-color: #b91c1c;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>REKAPITULASI ANGKET CALON KETUA RT 005</h1>
+    <p style="text-align:center; font-size:13px; color:#64748b;">Update Real-Time Lintas Perangkat</p>
+
+    <div class="stat-grid">
+        <div class="stat-card">
+            <div class="stat-number" id="total-masuk">0</div>
+            <div style="font-size:12px;">Total Suara Masuk</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="total-sisa">97</div>
+            <div style="font-size:12px;">Belum Memilih</div>
+        </div>
+    </div>
+
+    <h3>Peringkat Usulan Calon</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>Nama Calon</th>
+                <th>Jumlah Usulan</th>
+            </tr>
+        </thead>
+        <tbody id="rekap-body">
+            <tr><td colspan="3" style="text-align:center;">Memuat data...</td></tr>
+        </tbody>
+    </table>
+
+    <button onclick="resetDataDenganPassword()" class="btn-reset">
+        🔒 Reset Data Angket (Khusus Panitia)
+    </button>
+</div>
+
+<script>
+    // Konfigurasi Firebase Resmi Proyek angket-rt005
+    const firebaseConfig = {
+        apiKey: "AIzaSyAcjR8onOB-H9fV5iI6S3Z9V7_fPyozMpY",
+        authDomain: "angket-rt005.firebaseapp.com",
+        databaseURL: "https://angket-rt005-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "angket-rt005",
+        storageBucket: "angket-rt005.firebasestorage.app",
+        messagingSenderId: "32207202299",
+        appId: "1:32207202299:web:53f34fb956f7fb528a8d5e"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Password untuk reset
+    const PASS_PANITIA = "adminrt05";
+
+    // Pantau perubahan secara Real-time
+    db.ref('votes').on('value', snapshot => {
+        const data = snapshot.val() || {};
+        const totalMasuk = Object.keys(data).length;
+        document.getElementById('total-masuk').innerText = totalMasuk;
+        document.getElementById('total-sisa').innerText = 97 - totalMasuk;
+
+        const counts = {};
+        Object.values(data).forEach(vote => {
+            const key = vote.calon_nama;
+            counts[key] = (counts[key] || 0) + 1;
+        });
+
+        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+        const tbody = document.getElementById('rekap-body');
+        tbody.innerHTML = '';
+        if (sorted.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Belum ada suara masuk.</td></tr>';
+            return;
+        }
+
+        sorted.forEach(([nama, jumlah], idx) => {
+            tbody.innerHTML += `
+                <tr>
+                    <td class="rank">${idx + 1}</td>
+                    <td><strong>${nama}</strong></td>
+                    <td><span class="badge">${jumlah} Usulan</span></td>
+                </tr>
+            `;
+        });
+    });
+
+    function resetDataDenganPassword() {
+        const inputPass = prompt("Masukkan Password Panitia untuk Mereset Data:");
+        if (inputPass === null) return;
+
+        if (inputPass === PASS_PANITIA) {
+            const yakin = confirm("⚠️ PERINGATAN: Seluruh data angket yang sudah masuk akan DIHAPUS PERMANEN. Lanjutkan?");
+            if (yakin) {
+                db.ref('votes').remove()
+                    .then(() => {
+                        alert("✅ Seluruh data angket berhasil dibersihkan/direset!");
+                    })
+                    .catch((err) => {
+                        alert("❌ Gagal mereset data: " + err.message);
+                    });
+            }
+        } else {
+            alert("❌ Password salah! Akses reset ditolak.");
+        }
+    }
+</script>
+</body>
+</html>

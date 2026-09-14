@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Angket Pemilihan Ketua RT 005 / RW 018</title>
+    <!-- Firebase SDK (Compat Version) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root { --primary: #1e3a8a; --secondary: #0284c7; --bg: #f8fafc; --danger: #dc2626; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg); padding: 20px 12px; display: flex; justify-content: center; }
+        .container { max-width: 680px; width: 100%; background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); overflow: hidden; border: 1px solid #e2e8f0; }
+        .header { background: linear-gradient(135deg, #1e3a8a 0%, #0284c7 100%); color: white; padding: 24px 20px; text-align: center; }
+        .content { padding: 24px 20px; }
+        .notice-box { background-color: #eff6ff; border-left: 4px solid var(--secondary); padding: 14px 16px; border-radius: 6px; margin-bottom: 24px; font-size: 13.5px; color: #1e40af; }
+        .alert-danger { display: none; background-color: #fef2f2; border-left: 4px solid var(--danger); color: #991b1b; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 13.5px; font-weight: bold; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 8px; }
+        select, textarea { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; }
+        .info-card { background: #f1f5f9; padding: 10px 14px; border-radius: 6px; margin-top: 8px; font-size: 13px; display: none; border: 1px solid #cbd5e1; }
+        .info-card.active { display: block; }
+        .btn-submit { width: 100%; background: #1e3a8a; color: white; border: none; padding: 14px; font-size: 16px; font-weight: 600; border-radius: 8px; cursor: pointer; }
+        .btn-submit:disabled { background: #94a3b8; cursor: not-allowed; }
+        .success-screen { display: none; text-align: center; padding: 40px 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>ANGKET PENGUSULAN CALON KETUA RT 005</h2>
+        <p style="font-size: 13px; opacity: 0.9;">RW 018 Desa Lubang Buaya, Kec. Setu, Kab. Bekasi</p>
+    </div>
+
+    <div class="content" id="form-container">
+        <div class="notice-box">
+            <strong>Pemberitahuan:</strong> Setiap warga DPT (001-097) hanya dapat memilih 1 kali. Pilihan akan diverifikasi secara sistem di semua perangkat.
+        </div>
+
+        <div id="danger-box" class="alert-danger">
+            ⚠️ PERINGATAN: Nama/Nomor Urut ini SUDAH MEMILIH di sistem! Anda tidak bisa memilih lagi dari perangkat mana pun.
+        </div>
+
+        <form id="angketForm">
+            <div class="form-group">
+                <label for="pemilih">1. Pilih Nama Anda (Sesuai DPT RT 005) <span style="color:red">*</span></label>
+                <select id="pemilih" required onchange="updatePemilihInfo()">
+                    <option value="">-- Pilih Nama Pemilih --</option>
+                </select>
+                <div id="pemilih-info" class="info-card"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="calon">2. Nama Warga yang Diusulkan Jadi Ketua RT <span style="color:red">*</span></label>
+                <select id="calon" required onchange="updateCalonInfo()">
+                    <option value="">-- Pilih Nama Calon --</option>
+                </select>
+                <div id="calon-info" class="info-card"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="alasan">3. Alasan Pengusulan (Opsional)</label>
+                <textarea id="alasan" rows="3" placeholder="Alasan singkat..."></textarea>
+            </div>
+
+            <button type="submit" id="btnSubmit" class="btn-submit">Kirim Aspirasi Angket</button>
+        </form>
+    </div>
+
+    <div class="success-screen" id="success-container">
+        <div style="font-size: 50px; color: #16a34a;">✓</div>
+        <h2>Aspirasi Terkirim!</h2>
+        <p style="margin-top: 8px; color: #475569; font-size: 14px;">Terima kasih. Usulan Anda telah berhasil dicatat secara real-time di sistem Panitia.</p>
+        <a href="hasil.html" style="display:inline-block; margin-top:20px; color:#0284c7; text-decoration:none; font-weight:bold;">Lihat Hasil Rekap Real-time &rarr;</a>
+    </div>
+</div>
+
+<script>
+    // Konfigurasi Firebase Resmi Proyek angket-rt005
+    const firebaseConfig = {
+        apiKey: "AIzaSyAcjR8onOB-H9fV5iI6S3Z9V7_fPyozMpY",
+        authDomain: "angket-rt005.firebaseapp.com",
+        databaseURL: "https://angket-rt005-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "angket-rt005",
+        storageBucket: "angket-rt005.firebasestorage.app",
+        messagingSenderId: "32207202299",
+        appId: "1:32207202299:web:53f34fb956f7fb528a8d5e"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const dptData = [{"no_urut": "001", "no_asli": "310", "nama": "ABDUL ROCHIM", "blok": "S14/32"}, {"no_urut": "002", "no_asli": "311", "nama": "ADDE SURYA", "blok": "S23/06"}, {"no_urut": "003", "no_asli": "312", "nama": "ADITYA NURUL", "blok": "S14/15"}, {"no_urut": "004", "no_asli": "313", "nama": "AGUNG", "blok": "S15/29"}, {"no_urut": "005", "no_asli": "314", "nama": "AGUS PRAWOTO", "blok": "S15/26"}, {"no_urut": "006", "no_asli": "315", "nama": "AHMAD BASARI", "blok": "S12/19"}, {"no_urut": "007", "no_asli": "316", "nama": "AHMAD SOFWAN", "blok": "S12/12A"}, {"no_urut": "008", "no_asli": "317", "nama": "AL MAKAWI", "blok": "S15/27"}, {"no_urut": "009", "no_asli": "318", "nama": "ALI UMRA", "blok": "S14/16"}, {"no_urut": "010", "no_asli": "319", "nama": "ALIZAR", "blok": "S12/15"}, {"no_urut": "011", "no_asli": "320", "nama": "ARDI", "blok": "S14/28"}, {"no_urut": "012", "no_asli": "321", "nama": "ARI SAMSUL BAHRI", "blok": "S12/34"}, {"no_urut": "013", "no_asli": "322", "nama": "ARIE SURYANA", "blok": "S11/05"}, {"no_urut": "014", "no_asli": "323", "nama": "ARIF SUBAGYO", "blok": "S11/11"}, {"no_urut": "015", "no_asli": "324", "nama": "ASIYANI", "blok": "S12/01"}, {"no_urut": "016", "no_asli": "325", "nama": "ASMEDI", "blok": "S15/32"}, {"no_urut": "017", "no_asli": "326", "nama": "ASRIYANTI", "blok": "S11/01"}, {"no_urut": "018", "no_asli": "327", "nama": "AUS SUSANTO", "blok": "S12/27"}, {"no_urut": "019", "no_asli": "328", "nama": "AZHAR ABDUSSALAM", "blok": "S15/31"}, {"no_urut": "020", "no_asli": "329", "nama": "BUDI HARTONO", "blok": "S12/35"}, {"no_urut": "021", "no_asli": "330", "nama": "BUDIMAN SINABELA", "blok": "S14/05"}, {"no_urut": "022", "no_asli": "331", "nama": "DENY KURNIAWAN", "blok": "S12/32"}, {"no_urut": "023", "no_asli": "332", "nama": "DEPI PURWAJI", "blok": "S23/01"}, {"no_urut": "024", "no_asli": "333", "nama": "DIAN SUHARI SH", "blok": "S12/36"}, {"no_urut": "025", "no_asli": "334", "nama": "DINA M", "blok": "S11/14"}, {"no_urut": "026", "no_asli": "335", "nama": "DONI MARDIANA", "blok": "S12/24"}, {"no_urut": "027", "no_asli": "336", "nama": "DOSROHA MANALU", "blok": "S12/25"}, {"no_urut": "028", "no_asli": "337", "nama": "EDI ROHADI", "blok": "S14/29"}, {"no_urut": "029", "no_asli": "338", "nama": "EKA SARTONO", "blok": "S22/01"}, {"no_urut": "030", "no_asli": "339", "nama": "EKO JANUAR", "blok": "S12/22"}, {"no_urut": "031", "no_asli": "340", "nama": "EKO PURNOMO", "blok": "S14/17"}, {"no_urut": "032", "no_asli": "341", "nama": "EKO RIYANTO MALAU", "blok": "S14/23"}, {"no_urut": "033", "no_asli": "342", "nama": "EKO SUPRIONO", "blok": "S14/01"}, {"no_urut": "034", "no_asli": "343", "nama": "ENDA ADI WIJAYA", "blok": "S11/10"}, {"no_urut": "035", "no_asli": "344", "nama": "ENGKOH", "blok": "S11/02"}, {"no_urut": "036", "no_asli": "345", "nama": "HADI MULYA P", "blok": "S22/14"}, {"no_urut": "037", "no_asli": "346", "nama": "HADI PRAYITNO", "blok": "S14/02"}, {"no_urut": "038", "no_asli": "347", "nama": "HADI SUCIPTO", "blok": "S22/11"}, {"no_urut": "039", "no_asli": "348", "nama": "HARYONO", "blok": "S12/11"}, {"no_urut": "040", "no_asli": "349", "nama": "HERDIN SEPTRIO", "blok": "S14/19"}, {"no_urut": "041", "no_asli": "350", "nama": "HERI PURWANTO", "blok": "S14/12A"}, {"no_urut": "042", "no_asli": "351", "nama": "HERMAWAN", "blok": "S14/26"}, {"no_urut": "043", "no_asli": "352", "nama": "IHKSAN", "blok": "S12/12"}, {"no_urut": "044", "no_asli": "353", "nama": "IWAN HERIAWAN", "blok": "S11/12A"}, {"no_urut": "045", "no_asli": "354", "nama": "IWAN", "blok": "S12/05"}, {"no_urut": "046", "no_asli": "355", "nama": "JEFRY ( MUHARI )", "blok": "S15/20"}, {"no_urut": "047", "no_asli": "356", "nama": "JOHANA", "blok": "S12/35"}, {"no_urut": "048", "no_asli": "357", "nama": "JOKO", "blok": "S12/04"}, {"no_urut": "049", "no_asli": "358", "nama": "JUPRIANTO", "blok": "S12/03"}, {"no_urut": "050", "no_asli": "359", "nama": "KHAERON", "blok": "S14/03"}, {"no_urut": "051", "no_asli": "360", "nama": "KRIS MARTANTO", "blok": "S15/28"}, {"no_urut": "052", "no_asli": "361", "nama": "LIKA AFANDI", "blok": "S12/10"}, {"no_urut": "053", "no_asli": "362", "nama": "MARSONO SH", "blok": "S12/06"}, {"no_urut": "054", "no_asli": "363", "nama": "MERAMIS", "blok": "S14/12"}, {"no_urut": "055", "no_asli": "364", "nama": "MUHAYAT", "blok": "S15/30"}, {"no_urut": "056", "no_asli": "365", "nama": "MURIN", "blok": "S12/28"}, {"no_urut": "057", "no_asli": "366", "nama": "MUSLIM", "blok": "S12/07"}, {"no_urut": "058", "no_asli": "367", "nama": "NGABAS", "blok": "S22/02"}, {"no_urut": "059", "no_asli": "368", "nama": "NURFUNGKI MAULUDIN", "blok": "S11/04"}, {"no_urut": "060", "no_asli": "369", "nama": "OTONG SUHANDI", "blok": "S14/08"}, {"no_urut": "061", "no_asli": "370", "nama": "PENDAS TUMAGOR", "blok": "S14/11"}, {"no_urut": "062", "no_asli": "371", "nama": "PRIYO SANTOSA", "blok": "S12/14"}, {"no_urut": "063", "no_asli": "372", "nama": "RONI SETIAWAN", "blok": "S22/03"}, {"no_urut": "064", "no_asli": "373", "nama": "RUDI Y", "blok": "S14/10"}, {"no_urut": "065", "no_asli": "374", "nama": "RUDI APRIYADI", "blok": "S22/04"}, {"no_urut": "066", "no_asli": "375", "nama": "RUSYDI", "blok": "S15/25"}, {"no_urut": "067", "no_asli": "376", "nama": "SAHRUL", "blok": "S14/11"}, {"no_urut": "068", "no_asli": "377", "nama": "SAMSURI", "blok": "S11/06"}, {"no_urut": "069", "no_asli": "378", "nama": "SARJONO", "blok": "S12/18"}, {"no_urut": "070", "no_asli": "379", "nama": "SARTINI", "blok": "S14/27"}, {"no_urut": "071", "no_asli": "380", "nama": "SETYO WIDRA D", "blok": "S14/33"}, {"no_urut": "072", "no_asli": "381", "nama": "SIGIT PRANOTO", "blok": "S14/25"}, {"no_urut": "073", "no_asli": "382", "nama": "SOETRISNO", "blok": "S14/20"}, {"no_urut": "074", "no_asli": "383", "nama": "SUHATUB", "blok": "S22/05"}, {"no_urut": "075", "no_asli": "384", "nama": "SUJADI", "blok": "S23/02"}, {"no_urut": "076", "no_asli": "385", "nama": "SUJONO", "blok": "S23/05"}, {"no_urut": "077", "no_asli": "386", "nama": "SULAIMAH", "blok": "S12/30"}, {"no_urut": "078", "no_asli": "387", "nama": "SUPARWIYOTO", "blok": "S12/20"}, {"no_urut": "079", "no_asli": "388", "nama": "SUPRIYADI", "blok": "S12/07"}, {"no_urut": "080", "no_asli": "389", "nama": "SUPRIYANTO", "blok": "S14/04"}, {"no_urut": "081", "no_asli": "390", "nama": "SURYA KUSUMA A", "blok": "S14/09"}, {"no_urut": "082", "no_asli": "391", "nama": "SUTARJO", "blok": "S14/22"}, {"no_urut": "083", "no_asli": "392", "nama": "TIRTA KOMARA", "blok": "S15/19"}, {"no_urut": "084", "no_asli": "393", "nama": "TITI", "blok": "S12/09"}, {"no_urut": "085", "no_asli": "394", "nama": "TITO P", "blok": "S12/23"}, {"no_urut": "086", "no_asli": "395", "nama": "TRI SETYO P", "blok": "S12/31"}, {"no_urut": "087", "no_asli": "396", "nama": "TRI WITARTO", "blok": "S14/10"}, {"no_urut": "088", "no_asli": "397", "nama": "UDORO", "blok": "S11/03"}, {"no_urut": "089", "no_asli": "398", "nama": "UWI", "blok": "S14/14"}, {"no_urut": "090", "no_asli": "399", "nama": "WATNO", "blok": "S11/09"}, {"no_urut": "091", "no_asli": "400", "nama": "WINARKO", "blok": "S14/24"}, {"no_urut": "092", "no_asli": "401", "nama": "YASIR SUHARI S.Com", "blok": "S12/23"}, {"no_urut": "093", "no_asli": "402", "nama": "YOGI M DIMYATI", "blok": "S12/17"}, {"no_urut": "094", "no_asli": "403", "nama": "YUDI WAHYUDI", "blok": "S14/30"}, {"no_urut": "095", "no_asli": "404", "nama": "YUNUS", "blok": "S15/33"}, {"no_urut": "096", "no_asli": "405", "nama": "ZEPARLIN", "blok": "S12/02"}, {"no_urut": "097", "no_asli": "406", "nama": "ZULHAM AGUS", "blok": "S22/15"}];
+
+    const pemilihSelect = document.getElementById('pemilih');
+    const calonSelect = document.getElementById('calon');
+    const dangerBox = document.getElementById('danger-box');
+    const btnSubmit = document.getElementById('btnSubmit');
+
+    dptData.forEach(item => {
+        let opt1 = document.createElement('option');
+        opt1.value = item.no_urut;
+        opt1.textContent = item.no_urut + '. ' + item.nama + ' (' + item.blok + ')';
+        pemilihSelect.appendChild(opt1);
+
+        let opt2 = document.createElement('option');
+        opt2.value = item.no_urut;
+        opt2.textContent = item.nama + ' (' + item.blok + ')';
+        calonSelect.appendChild(opt2);
+    });
+
+    function updatePemilihInfo() {
+        const val = pemilihSelect.value;
+        const info = document.getElementById('pemilih-info');
+        dangerBox.style.display = 'none';
+        btnSubmit.disabled = false;
+
+        if (!val) { info.classList.remove('active'); return; }
+
+        db.ref('votes/' + val).once('value', snapshot => {
+            if (snapshot.exists()) {
+                dangerBox.style.display = 'block';
+                btnSubmit.disabled = true;
+            }
+        });
+
+        const person = dptData.find(d => d.no_urut === val);
+        if (person) {
+            info.innerHTML = '<strong>Data Pemilih:</strong> ' + person.nama + ' | <strong>Blok:</strong> ' + person.blok + ' | <strong>No. Urut:</strong> ' + person.no_urut;
+            info.classList.add('active');
+        }
+    }
+
+    function updateCalonInfo() {
+        const val = calonSelect.value;
+        const info = document.getElementById('calon-info');
+        if (!val) { info.classList.remove('active'); return; }
+        const person = dptData.find(d => d.no_urut === val);
+        if (person) {
+            info.innerHTML = '<strong>Calon Diusulkan:</strong> ' + person.nama + ' | <strong>Blok:</strong> ' + person.blok;
+            info.classList.add('active');
+        }
+    }
+
+    document.getElementById('angketForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const pemilihNo = pemilihSelect.value;
+        const calonNo = calonSelect.value;
+        const pemilihData = dptData.find(d => d.no_urut === pemilihNo);
+        const calonData = dptData.find(d => d.no_urut === calonNo);
+        const alasanText = document.getElementById('alasan').value.trim();
+
+        btnSubmit.disabled = true;
+        btnSubmit.innerText = "Mengirim...";
+
+        db.ref('votes/' + pemilihNo).once('value', snapshot => {
+            if (snapshot.exists()) {
+                alert("Nomor DPT ini sudah pernah memberikan usulan sebelumnya!");
+                dangerBox.style.display = 'block';
+                btnSubmit.innerText = "Kirim Aspirasi Angket";
+                return;
+            }
+
+            db.ref('votes/' + pemilihNo).set({
+                pemilih_no: pemilihNo,
+                pemilih_nama: pemilihData.nama,
+                calon_no: calonNo,
+                calon_nama: calonData.nama,
+                alasan: alasanText,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            }, function(error) {
+                if (error) {
+                    alert("Gagal menyimpan. Periksa koneksi internet.");
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerText = "Kirim Aspirasi Angket";
+                } else {
+                    document.getElementById('form-container').style.display = 'none';
+                    document.getElementById('success-container').style.display = 'block';
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>
