@@ -10,37 +10,51 @@
     <!-- SheetJS CDN for Exporting to Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f8fafc; color: #334155; padding: 20px 12px; display: flex; justify-content: center; }
-        .container { max-width: 900px; width: 100%; background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
-        h1 { color: #1e3a8a; font-size: 20px; text-align: center; margin-bottom: 5px; }
+        :root { --primary: #1e3a8a; --secondary: #0284c7; --bg: #f8fafc; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg); color: #334155; padding: 12px 8px; display: flex; justify-content: center; }
+        .container { max-width: 900px; width: 100%; background: white; border-radius: 12px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); overflow: hidden; }
+        h1 { color: #1e3a8a; font-size: 18px; text-align: center; margin-bottom: 4px; text-transform: uppercase; }
         
         #login-screen { text-align: center; padding: 30px 10px; }
-        #login-screen input { padding: 12px; width: 250px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 6px; margin-right: 8px; }
-        #login-screen button { padding: 12px 20px; background: #1e3a8a; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        #login-screen input { padding: 12px; width: 100%; max-width: 280px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 10px; }
+        #login-screen button { padding: 12px 20px; width: 100%; max-width: 280px; background: #1e3a8a; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         
         #dashboard-content { display: none; }
 
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
-        .stat-card { background: #eff6ff; padding: 15px; border-radius: 8px; text-align: center; }
-        .stat-number { font-size: 24px; font-weight: bold; color: #0284c7; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 16px 0; }
+        .stat-card { background: #eff6ff; padding: 12px 8px; border-radius: 8px; text-align: center; }
+        .stat-number { font-size: 22px; font-weight: bold; color: #0284c7; }
         
-        .section-title { font-size: 16px; margin-top: 25px; margin-bottom: 10px; color: #1e3a8a; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+        .section-header { margin-top: 24px; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; display: flex; flex-direction: column; gap: 8px; }
+        @media (min-width: 600px) {
+            .section-header { flex-direction: row; justify-content: space-between; align-items: center; }
+        }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 13.5px; }
-        th { background: #1e3a8a; color: white; }
+        .section-title { font-size: 15px; font-weight: bold; color: #1e3a8a; }
+        
+        /* Table Responsive Container */
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 8px; border-radius: 6px; border: 1px solid #e2e8f0; }
+        table { width: 100%; border-collapse: collapse; min-width: 500px; }
+        th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 12.5px; word-break: break-word; }
+        th { background: #1e3a8a; color: white; font-size: 13px; white-space: nowrap; }
         .rank { font-weight: bold; color: #0284c7; }
-        .badge { background: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 12px; font-weight: bold; font-size: 12px; }
+        .badge { background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11.5px; display: inline-block; }
         
         .btn-excel {
             background-color: #16a34a;
             color: white;
             border: none;
-            padding: 8px 14px;
+            padding: 8px 12px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
-            font-size: 13px;
+            font-size: 12px;
+            width: 100%;
+            text-align: center;
+        }
+        @media (min-width: 600px) {
+            .btn-excel { width: auto; }
         }
         .btn-excel:hover { background-color: #15803d; }
 
@@ -48,15 +62,14 @@
             background-color: #dc2626;
             color: white;
             border: none;
-            padding: 12px 16px;
+            padding: 12px;
             border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
-            font-size: 14px;
-            margin-top: 30px;
+            font-size: 13.5px;
+            margin-top: 25px;
             width: 100%;
         }
-        .btn-reset:hover { background-color: #b91c1c; }
     </style>
 </head>
 <body>
@@ -65,69 +78,73 @@
     <!-- LAYAR LOGIN PANITIA -->
     <div id="login-screen">
         <div style="font-size: 40px; margin-bottom: 10px;">🔒</div>
-        <h2 style="color: #1e3a8a; margin-bottom: 10px;">Akses Khusus Panitia</h2>
-        <p style="font-size: 13.5px; color: #64748b; margin-bottom: 20px;">
-            Halaman rekapitulasi dan data pemilih dilindungi untuk menjaga kerahasiaan proses angket.
+        <h2 style="color: #1e3a8a; margin-bottom: 6px;">Akses Khusus Panitia</h2>
+        <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">
+            Halaman rekapitulasi dilindungi untuk menjaga kerahasiaan angket.
         </p>
         <div>
-            <input type="password" id="passInput" placeholder="Masukkan Password Panitia..." onkeyup="if(event.key==='Enter') loginPanitia()">
+            <input type="password" id="passInput" placeholder="Masukkan Password..." onkeyup="if(event.key==='Enter') loginPanitia()"><br>
             <button onclick="loginPanitia()">Masuk Dashboard</button>
         </div>
-        <p id="passError" style="color: #dc2626; font-size: 13px; margin-top: 10px; display: none;">❌ Password salah, silakan coba lagi.</p>
+        <p id="passError" style="color: #dc2626; font-size: 12.5px; margin-top: 10px; display: none;">❌ Password salah, silakan coba lagi.</p>
     </div>
 
-    <!-- DASHBOARD REKAPITULASI (Hanya tampil setelah login) -->
+    <!-- DASHBOARD REKAPITULASI -->
     <div id="dashboard-content">
-        <h1>REKAPITULASI ANGKET CALON KETUA RT 005</h1>
-        <p style="text-align:center; font-size:13px; color:#64748b;">Data Real-Time Lintas Perangkat (Khusus Panitia)</p>
+        <h1>REKAPITULASI ANGKET RT 005</h1>
+        <p style="text-align:center; font-size:12px; color:#64748b;">Update Real-Time Lintas Perangkat (Khusus Panitia)</p>
 
         <div class="stat-grid">
             <div class="stat-card">
                 <div class="stat-number" id="total-masuk">0</div>
-                <div style="font-size:12px;">Total Suara Masuk</div>
+                <div style="font-size:11.5px;">Total Suara Masuk</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number" id="total-sisa">97</div>
-                <div style="font-size:12px;">Belum Memilih</div>
+                <div style="font-size:11.5px;">Belum Memilih</div>
             </div>
         </div>
 
         <!-- TABEL 1: PERINGKAT -->
-        <div class="section-title">
-            <span>📊 Peringkat Perolehan Usulan Calon</span>
+        <div class="section-header">
+            <span class="section-title">📊 Peringkat Usulan Calon</span>
             <button class="btn-excel" onclick="exportToExcel('rekap-table', 'Peringkat_Calon_RT005.xlsx')">📊 Export Excel Peringkat</button>
         </div>
-        <table id="rekap-table">
-            <thead>
-                <tr>
-                    <th style="width: 10%;">No</th>
-                    <th>Nama Calon Diusulkan</th>
-                    <th style="width: 25%;">Jumlah Usulan</th>
-                </tr>
-            </thead>
-            <tbody id="rekap-body">
-                <tr><td colspan="3" style="text-align:center;">Memuat data...</td></tr>
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table id="rekap-table">
+                <thead>
+                    <tr>
+                        <th style="width: 10%;">No</th>
+                        <th>Nama Calon Diusulkan</th>
+                        <th style="width: 30%;">Jumlah Usulan</th>
+                    </tr>
+                </thead>
+                <tbody id="rekap-body">
+                    <tr><td colspan="3" style="text-align:center;">Memuat data...</td></tr>
+                </tbody>
+            </table>
+        </div>
 
         <!-- TABEL 2: DETAIL SIAPA MILIH SIAPA -->
-        <div class="section-title">
-            <span>📝 Detail Rincian Aspirasi Pemilih</span>
-            <button class="btn-excel" onclick="exportToExcel('detail-table', 'Detail_Pemilih_RT005.xlsx')">📥 Export Excel Detail Pemilih</button>
+        <div class="section-header">
+            <span class="section-title">📝 Detail Rincian Aspirasi Pemilih</span>
+            <button class="btn-excel" onclick="exportToExcel('detail-table', 'Detail_Pemilih_RT005.xlsx')">📥 Export Excel Detail</button>
         </div>
-        <table id="detail-table">
-            <thead>
-                <tr>
-                    <th style="width: 8%;">No</th>
-                    <th>Nama Pemilih</th>
-                    <th>Mengusulkan Calon</th>
-                    <th>Alasan / Catatan</th>
-                </tr>
-            </thead>
-            <tbody id="detail-body">
-                <tr><td colspan="4" style="text-align:center;">Memuat data...</td></tr>
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table id="detail-table">
+                <thead>
+                    <tr>
+                        <th style="width: 8%;">No</th>
+                        <th style="width: 32%;">Nama Pemilih</th>
+                        <th style="width: 30%;">Mengusulkan Calon</th>
+                        <th>Alasan / Catatan</th>
+                    </tr>
+                </thead>
+                <tbody id="detail-body">
+                    <tr><td colspan="4" style="text-align:center;">Memuat data...</td></tr>
+                </tbody>
+            </table>
+        </div>
 
         <button onclick="resetDataDatabase()" class="btn-reset">
             🗑️ Reset Semua Data Angket (Uji Coba)
@@ -217,7 +234,6 @@
         });
     }
 
-    // Export Table to Excel
     function exportToExcel(tableId, filename) {
         const table = document.getElementById(tableId);
         const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet1" });
@@ -225,7 +241,7 @@
     }
 
     function resetDataDatabase() {
-        const yakin = confirm("⚠️ PERINGATAN: Seluruh data angket yang sudah masuk akan DIHAPUS PERMANEN dari database. Lanjutkan?");
+        const yakin = confirm("⚠️ PERINGATAN: Seluruh data angket akan DIHAPUS PERMANEN dari database. Lanjutkan?");
         if (yakin) {
             db.ref('votes').remove()
                 .then(() => {
