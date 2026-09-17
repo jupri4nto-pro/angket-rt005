@@ -7,19 +7,43 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <!-- SheetJS CDN for Exporting to Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f8fafc; color: #334155; padding: 20px 12px; display: flex; justify-content: center; }
-        .container { max-width: 800px; width: 100%; background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        .container { max-width: 900px; width: 100%; background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
         h1 { color: #1e3a8a; font-size: 20px; text-align: center; margin-bottom: 5px; }
+        
+        #login-screen { text-align: center; padding: 30px 10px; }
+        #login-screen input { padding: 12px; width: 250px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 6px; margin-right: 8px; }
+        #login-screen button { padding: 12px 20px; background: #1e3a8a; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        
+        #dashboard-content { display: none; }
+
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
         .stat-card { background: #eff6ff; padding: 15px; border-radius: 8px; text-align: center; }
         .stat-number { font-size: 24px; font-weight: bold; color: #0284c7; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+        
+        .section-title { font-size: 16px; margin-top: 25px; margin-bottom: 10px; color: #1e3a8a; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 13.5px; }
         th { background: #1e3a8a; color: white; }
         .rank { font-weight: bold; color: #0284c7; }
         .badge { background: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 12px; font-weight: bold; font-size: 12px; }
         
+        .btn-excel {
+            background-color: #16a34a;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        .btn-excel:hover { background-color: #15803d; }
+
         .btn-reset {
             background-color: #dc2626;
             color: white;
@@ -29,53 +53,89 @@
             cursor: pointer;
             font-weight: bold;
             font-size: 14px;
-            margin-top: 25px;
+            margin-top: 30px;
             width: 100%;
-            transition: background 0.2s;
         }
-        .btn-reset:hover {
-            background-color: #b91c1c;
-        }
+        .btn-reset:hover { background-color: #b91c1c; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>REKAPITULASI ANGKET CALON KETUA RT 005</h1>
-    <p style="text-align:center; font-size:13px; color:#64748b;">Update Real-Time Lintas Perangkat</p>
-
-    <div class="stat-grid">
-        <div class="stat-card">
-            <div class="stat-number" id="total-masuk">0</div>
-            <div style="font-size:12px;">Total Suara Masuk</div>
+    <!-- LAYAR LOGIN PANITIA -->
+    <div id="login-screen">
+        <div style="font-size: 40px; margin-bottom: 10px;">🔒</div>
+        <h2 style="color: #1e3a8a; margin-bottom: 10px;">Akses Khusus Panitia</h2>
+        <p style="font-size: 13.5px; color: #64748b; margin-bottom: 20px;">
+            Halaman rekapitulasi dan data pemilih dilindungi untuk menjaga kerahasiaan proses angket.
+        </p>
+        <div>
+            <input type="password" id="passInput" placeholder="Masukkan Password Panitia..." onkeyup="if(event.key==='Enter') loginPanitia()">
+            <button onclick="loginPanitia()">Masuk Dashboard</button>
         </div>
-        <div class="stat-card">
-            <div class="stat-number" id="total-sisa">97</div>
-            <div style="font-size:12px;">Belum Memilih</div>
-        </div>
+        <p id="passError" style="color: #dc2626; font-size: 13px; margin-top: 10px; display: none;">❌ Password salah, silakan coba lagi.</p>
     </div>
 
-    <h3>Peringkat Usulan Calon</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>No</th>
-                <th>Nama Calon</th>
-                <th>Jumlah Usulan</th>
-            </tr>
-        </thead>
-        <tbody id="rekap-body">
-            <tr><td colspan="3" style="text-align:center;">Memuat data...</td></tr>
-        </tbody>
-    </table>
+    <!-- DASHBOARD REKAPITULASI (Hanya tampil setelah login) -->
+    <div id="dashboard-content">
+        <h1>REKAPITULASI ANGKET CALON KETUA RT 005</h1>
+        <p style="text-align:center; font-size:13px; color:#64748b;">Data Real-Time Lintas Perangkat (Khusus Panitia)</p>
 
-    <button onclick="resetDataDenganPassword()" class="btn-reset">
-        🔒 Reset Data Angket (Khusus Panitia)
-    </button>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="total-masuk">0</div>
+                <div style="font-size:12px;">Total Suara Masuk</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-sisa">97</div>
+                <div style="font-size:12px;">Belum Memilih</div>
+            </div>
+        </div>
+
+        <!-- TABEL 1: PERINGKAT -->
+        <div class="section-title">
+            <span>📊 Peringkat Perolehan Usulan Calon</span>
+            <button class="btn-excel" onclick="exportToExcel('rekap-table', 'Peringkat_Calon_RT005.xlsx')">📊 Export Excel Peringkat</button>
+        </div>
+        <table id="rekap-table">
+            <thead>
+                <tr>
+                    <th style="width: 10%;">No</th>
+                    <th>Nama Calon Diusulkan</th>
+                    <th style="width: 25%;">Jumlah Usulan</th>
+                </tr>
+            </thead>
+            <tbody id="rekap-body">
+                <tr><td colspan="3" style="text-align:center;">Memuat data...</td></tr>
+            </tbody>
+        </table>
+
+        <!-- TABEL 2: DETAIL SIAPA MILIH SIAPA -->
+        <div class="section-title">
+            <span>📝 Detail Rincian Aspirasi Pemilih</span>
+            <button class="btn-excel" onclick="exportToExcel('detail-table', 'Detail_Pemilih_RT005.xlsx')">📥 Export Excel Detail Pemilih</button>
+        </div>
+        <table id="detail-table">
+            <thead>
+                <tr>
+                    <th style="width: 8%;">No</th>
+                    <th>Nama Pemilih</th>
+                    <th>Mengusulkan Calon</th>
+                    <th>Alasan / Catatan</th>
+                </tr>
+            </thead>
+            <tbody id="detail-body">
+                <tr><td colspan="4" style="text-align:center;">Memuat data...</td></tr>
+            </tbody>
+        </table>
+
+        <button onclick="resetDataDatabase()" class="btn-reset">
+            🗑️ Reset Semua Data Angket (Uji Coba)
+        </button>
+    </div>
 </div>
 
 <script>
-    // Konfigurasi Firebase Resmi Proyek angket-rt005
     const firebaseConfig = {
         apiKey: "AIzaSyAcjR8onOB-H9fV5iI6S3Z9V7_fPyozMpY",
         authDomain: "angket-rt005.firebaseapp.com",
@@ -88,59 +148,92 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Password untuk reset
     const PASS_PANITIA = "adminrt05";
 
-    // Pantau perubahan secara Real-time
-    db.ref('votes').on('value', snapshot => {
-        const data = snapshot.val() || {};
-        const totalMasuk = Object.keys(data).length;
-        document.getElementById('total-masuk').innerText = totalMasuk;
-        document.getElementById('total-sisa').innerText = 97 - totalMasuk;
-
-        const counts = {};
-        Object.values(data).forEach(vote => {
-            const key = vote.calon_nama;
-            counts[key] = (counts[key] || 0) + 1;
-        });
-
-        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-
-        const tbody = document.getElementById('rekap-body');
-        tbody.innerHTML = '';
-        if (sorted.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Belum ada suara masuk.</td></tr>';
-            return;
-        }
-
-        sorted.forEach(([nama, jumlah], idx) => {
-            tbody.innerHTML += `
-                <tr>
-                    <td class="rank">${idx + 1}</td>
-                    <td><strong>${nama}</strong></td>
-                    <td><span class="badge">${jumlah} Usulan</span></td>
-                </tr>
-            `;
-        });
-    });
-
-    function resetDataDenganPassword() {
-        const inputPass = prompt("Masukkan Password Panitia untuk Mereset Data:");
-        if (inputPass === null) return;
-
-        if (inputPass === PASS_PANITIA) {
-            const yakin = confirm("⚠️ PERINGATAN: Seluruh data angket yang sudah masuk akan DIHAPUS PERMANEN. Lanjutkan?");
-            if (yakin) {
-                db.ref('votes').remove()
-                    .then(() => {
-                        alert("✅ Seluruh data angket berhasil dibersihkan/direset!");
-                    })
-                    .catch((err) => {
-                        alert("❌ Gagal mereset data: " + err.message);
-                    });
-            }
+    function loginPanitia() {
+        const val = document.getElementById('passInput').value;
+        if (val === PASS_PANITIA) {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('dashboard-content').style.display = 'block';
+            loadDataRealtime();
         } else {
-            alert("❌ Password salah! Akses reset ditolak.");
+            document.getElementById('passError').style.display = 'block';
+        }
+    }
+
+    function loadDataRealtime() {
+        db.ref('votes').on('value', snapshot => {
+            const data = snapshot.val() || {};
+            const votesArray = Object.values(data);
+            const totalMasuk = votesArray.length;
+            
+            document.getElementById('total-masuk').innerText = totalMasuk;
+            document.getElementById('total-sisa').innerText = 97 - totalMasuk;
+
+            // 1. REKAP PEROLEHAN
+            const counts = {};
+            votesArray.forEach(vote => {
+                const key = vote.calon_nama;
+                counts[key] = (counts[key] || 0) + 1;
+            });
+
+            const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+            const tbodyRekap = document.getElementById('rekap-body');
+            tbodyRekap.innerHTML = '';
+            if (sorted.length === 0) {
+                tbodyRekap.innerHTML = '<tr><td colspan="3" style="text-align:center;">Belum ada suara masuk.</td></tr>';
+            } else {
+                sorted.forEach(([nama, jumlah], idx) => {
+                    tbodyRekap.innerHTML += `
+                        <tr>
+                            <td class="rank">${idx + 1}</td>
+                            <td><strong>${nama}</strong></td>
+                            <td><span class="badge">${jumlah} Usulan</span></td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // 2. DETAIL PEMILIH
+            const tbodyDetail = document.getElementById('detail-body');
+            tbodyDetail.innerHTML = '';
+            if (votesArray.length === 0) {
+                tbodyDetail.innerHTML = '<tr><td colspan="4" style="text-align:center;">Belum ada data pemilih.</td></tr>';
+            } else {
+                votesArray.sort((a, b) => parseInt(a.pemilih_no) - parseInt(b.pemilih_no));
+                
+                votesArray.forEach((vote, idx) => {
+                    tbodyDetail.innerHTML += `
+                        <tr>
+                            <td>${idx + 1}</td>
+                            <td><strong>[No. ${vote.pemilih_no}] ${vote.pemilih_nama}</strong></td>
+                            <td><span style="color:#0284c7; font-weight:bold;">👉 ${vote.calon_nama}</span></td>
+                            <td style="color:#64748b; font-style:italic;">${vote.alasan ? vote.alasan : '-'}</td>
+                        </tr>
+                    `;
+                });
+            }
+        });
+    }
+
+    // Export Table to Excel
+    function exportToExcel(tableId, filename) {
+        const table = document.getElementById(tableId);
+        const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet1" });
+        XLSX.writeFile(wb, filename);
+    }
+
+    function resetDataDatabase() {
+        const yakin = confirm("⚠️ PERINGATAN: Seluruh data angket yang sudah masuk akan DIHAPUS PERMANEN dari database. Lanjutkan?");
+        if (yakin) {
+            db.ref('votes').remove()
+                .then(() => {
+                    alert("✅ Seluruh data angket berhasil dibersihkan/direset!");
+                })
+                .catch((err) => {
+                    alert("❌ Gagal mereset data: " + err.message);
+                });
         }
     }
 </script>
